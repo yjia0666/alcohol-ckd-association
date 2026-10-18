@@ -28,24 +28,13 @@ df <- df1 %>%
 
 ```
 
-```{r}
-# Duplicate id removed
-df1 %>%
-  count(ABSLID, ABSPID) %>%
-  filter(n > 1)
-```
-
-```{r}
-df %>%
-  count(EGFRKDSA, SEX)
-```
 
 
 ```{r}
 
 ckd_data <- df %>%
   mutate(
-    AGE = case_when(
+    Age = case_when(
       AGEB %in% 1:4 ~ NA_real_,
       AGEB == 5 ~ 18.5,
       AGEB == 6 ~ 22,
@@ -128,7 +117,7 @@ ckd_data <- df %>%
   VDLCMRGT %in% c(0, 8) ~ NA_character_
   ),
       
-  ALC_freq_3 = case_when(
+  Alcohol_frequency = case_when(
   ALCF3 == 1 ~ 7,
   ALCF3 == 2 ~ 6,
   ALCF3 == 3 ~ 5,
@@ -179,18 +168,6 @@ ckd_data <- df %>%
   )
 ```
 
-
-```{r}
-# Calculate the proportion within each sex
-ckd_prop <- ckd_data %>%
-  filter(!is.na(SEX), !is.na(CKD)) %>%
-  group_by(SEX, CKD) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(SEX) %>%
-  mutate(proportion = n / sum(n))
-```
-
-
 Alcohol Section of Dataset.
 
 ```{r}
@@ -207,14 +184,14 @@ alcohol_type <- read.csv(here("data", "AHSnhs11b14.csv"), stringsAsFactors = TRU
 ```
 
 ```{r}
-alcohol_quantity <- df1 %>%
+Alcohol_quantity <- df1 %>%
   select(
     ABSLID,
     ABSPID,
     ALINWKSD
   ) %>%
   mutate(
-    alcohol_quantity = case_when(
+    Alcohol_quantity = case_when(
       ALINWKSD == 97 ~ 0,          # Did not drink last week
       ALINWKSD >= 0 & ALINWKSD <= 96 ~ ALINWKSD,  # Actual alcohol intake in last week 
       ALINWKSD %in% c(98, 99) ~ NA_real_  # Not stated/unknown or not applicable,
@@ -222,10 +199,6 @@ alcohol_quantity <- df1 %>%
   )
 ```
 
-```{r}
-alcohol_type %>%
-  count(ALCTYPT)
-```
 
 ```{r}
 alcohol_type <- alcohol_type %>%
@@ -265,7 +238,7 @@ alcohol_type_person <- alcohol_type %>%
 
 ```{r}
 # Combine alcohol type and alcohol quantity at the participant level
-alcohol_person <- alcohol_quantity %>%
+alcohol_person <- Alcohol_quantity %>%
   left_join(
     alcohol_type_person,
     by = c("ABSLID", "ABSPID")
@@ -280,12 +253,6 @@ df_final <- ckd_data %>%
     by = c("ABSLID", "ABSPID")
   )
 ```
-
-```{r}
-alcohol_type %>%
-  count(alcohol_type)
-```
-
 
 
 ```{r}
@@ -322,90 +289,6 @@ alcohol <- c("Low_alcohol_beer", "Mid_strength_beer", "Full_strength_beer", "Low
 ```
 
 
-```{r}
-alc_quantity_prop <- df_final %>%
-  filter(
-    !is.na(SEX),
-    !is.na(CKD),
-    !is.na(alcohol_quantity)
-  ) %>%
-  mutate(
-    alcohol_group = cut(
-      alcohol_quantity,
-      breaks = c(-Inf, 0, 1, 2, 4, Inf),
-      labels = c("0", "0–1", "1–2", "2–4", ">4")
-    )
-  ) %>%
-  group_by(SEX, alcohol_group) %>%
-  summarise(
-    proportion_CKD = mean(CKD == "CKD"),
-    n = n(),
-    .groups = "drop"
-  )
-```
-
-```{r}
-alc_quantity_prop
-```
-
-The smoking and micronutrient data. To avoid information loss, we did not shrink data for alcohol and CKD if smoking and micronutrients was missing. 
-
-```{r}
-smoker_status_prop <- df_final %>%
-  filter(
-    !is.na(SEX),
-    !is.na(CKD),
-    !is.na(smoker_status),
-    !is.na(daily_smoke),
-  ) %>%
-  group_by(SEX, daily_smoke) %>%
-  summarise(
-    proportion_CKD = mean(CKD == "CKD"),
-    n = n(),
-    .groups = "drop"
-  )
-```
-
-
-```{r}
-smoker_prop <- df_final %>%
-  filter(
-    !is.na(SEX),
-    !is.na(CKD),
-    !is.na(smoker_status),
-  ) %>%
-  group_by(SEX, smoker_status) %>%
-  summarise(
-    proportion_CKD = mean(CKD == "CKD"),
-    n = n(),
-    .groups = "drop"
-  )
-```
-
-
-
-```{r}
-
-micro_prop <- df_final %>%
-  filter(
-    !is.na(SEX),
-    !is.na(CKD)
-  ) %>%
-  select(SEX, CKD, Folate, Vitamin_B12, Ferritin, Vitamin_D) %>%
-  pivot_longer(
-    cols = c(Folate, Vitamin_B12, Ferritin, Vitamin_D),
-    names_to = "micronutrient",
-    values_to = "category"
-  ) %>%
-  filter(!is.na(category)) %>%
-  group_by(micronutrient, SEX, category) %>%
-  summarise(
-    proportion_CKD = mean(CKD == "CKD"),
-    n = n(),
-    .groups = "drop"
-  )
-
-```
 
 ```{r}
 #Not including Micronutrient Data
@@ -414,7 +297,7 @@ df_filter <- df_final %>%
   select(
     SEX,
     CKD,
-    alcohol_quantity,
+    Alcohol_quantity,
     Low_alcohol_beer,
     Mid_strength_beer,
     Full_strength_beer,
@@ -428,46 +311,38 @@ df_filter <- df_final %>%
     Fortified_wine,
     Cider,
     Cocktails,
-    ALC_freq_3,
+    Alcohol_frequency,
     Alcohol_risk,
-    Alcohol_risk_7day,
-    AGE,
+    Age,
     smoker_status,
     daily_smoke,
-    eGFR_range,
     
   ) %>%
   filter(
     !is.na(SEX),
     !is.na(CKD),
-    !is.na(alcohol_quantity),
+    !is.na(Alcohol_quantity),
     !is.na(Red_wine),
-    !is.na(ALC_freq_3),
+    !is.na(Alcohol_frequency),
     !is.na(Alcohol_risk),
-    !is.na(Alcohol_risk_7day),
-    !is.na(AGE),
+    !is.na(Age),
     !is.na(smoker_status),
     !is.na(daily_smoke),
-    !is.na(eGFR_range),
-    AGE >= 35
+    Age >= 35
   )
-```
-
-```{r}
-table(df_filter$eGFR_range)
 ```
 
 
 ```{r}
 # Convert variables to factors
 df_filter <- df_filter %>% 
-  filter(AGE != "< 18 years") %>%
+  filter(Age != "< 18 years") %>%
   mutate(
     CKD = factor(
       ifelse(CKD == "CKD", 1, 0),
       levels = c(0, 1)
     ),
-    SEX_factor = factor(
+    Sex = factor(
       SEX,
       levels = c("Female", "Male")
     ),
@@ -477,14 +352,6 @@ df_filter <- df_filter %>%
       levels = c(
         "Low risk",
         "Risky",
-        "High risk"
-      )
-    ),
-    Alcohol_risk_7day = factor(
-      Alcohol_risk_7day,
-      levels = c(
-        "Low risk",
-        "Medium risk",
         "High risk"
       )
     ),
@@ -511,17 +378,6 @@ df_filter <- df_filter %>%
       "30+ years"
     )
     ),
-    eGFR_range = factor(
-      eGFR_range,
-      levels = c(
-        "<30",
-        "30-44",
-        "45-59",
-        "60-74",
-        "75-89",
-        "90+"
-      )
-    ),
     
     across(
       c(
@@ -547,9 +403,39 @@ df_filter <- df_filter %>%
     )
   )
 
-saveRDS(df_filter, "shared_df_filter.rds")
 
 #We need to do the smoking / micronutrient secondary study in a separate data frame (It removes more people)
+```
 
+```{r}
+df_filter$Beer <- factor(
+  as.character(df_filter$Low_alcohol_beer) == "1" |
+  as.character(df_filter$Mid_strength_beer) == "1" |
+  as.character(df_filter$Full_strength_beer) == "1",
+  levels = c(FALSE, TRUE),
+  labels = c("0", "1")
+)
+
+df_filter$Wine <- factor(
+  as.character(df_filter$White_wine) == "1" |
+  as.character(df_filter$Red_wine) == "1" |
+  as.character(df_filter$Low_alcohol_wine) == "1" |
+  as.character(df_filter$Champagne_sparkling_wine) == "1" |
+  as.character(df_filter$Fortified_wine) == "1",
+  levels = c(FALSE, TRUE),
+  labels = c("0", "1")
+)
+
+df_filter$Spirits_Liqueurs <- factor(
+  as.character(df_filter$Spirits_RTD) == "1" |
+  as.character(df_filter$Liqueurs) == "1" |
+  as.character(df_filter$Spirits) == "1",
+  levels = c(FALSE, TRUE),
+  labels = c("0", "1")
+)
+```
+
+```{r}
+saveRDS(df_filter, "shared_df_filter.rds")
 ```
 
