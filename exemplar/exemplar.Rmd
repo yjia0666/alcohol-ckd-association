@@ -13,6 +13,7 @@ library(car)
 library(dagitty)
 library(knitr)
 library(kableExtra)
+library(ggplot2)
 ```
 
 ```{r}
@@ -43,14 +44,14 @@ variable_overview <- tibble::tibble(
     "Age"
   ),
   Description = c(
-    "Chronic kidney disease status",
+    "Chronic kidney disease status (0 = No, 1 = Yes)",
     "Number of standard drinks consumed in the last week",
     "Number of days per week consuming three or more drinks in a day over the past 12 months",
-    "Beer consumption in the last week",
-    "Wine consumption in the last week",
-    "Spirits and liqueurs consumption in the last week",
-    "Cider consumption in the last week",
-    "Cocktail consumption in the last week",
+    "Whether beer was consumed in the last week (0 = No, 1 = Yes)",
+    "Whether wine was consumed in the last week (0 = No, 1 = Yes)",
+    "Whether Spirits or liqueurs were consumed in the last week (0 = No, 1 = Yes)",
+    "Whether cider was consumed in the last week (0 = No, 1 = Yes)",
+    "Whether cocktail was consumed in the last week (0 = No, 1 = Yes)",
     "Participant sex",
     "Participant age"
   ),
@@ -114,29 +115,185 @@ The original dataset contained multiple alcohol types. To simplify the analysis 
 
 
 # Logistic Regression
-## Model Selection
-show how the method answers?  
-Why use logistic regression? binary outcome
-covariates: confounders & exposures
-include interaction: affect of sex...only added for quantity: primary exposure
+## Method Selection
+Logistic regression was selected because the outcome variable CKD is binary. This method estimates the association between alcohol consumption and the odds of CKD while accounting for other variables included in the model.
+
+## Model Specification
+```{r}
+model_int <- glm(CKD ~ Age + Alcohol_quantity * Sex + Alcohol_frequency + Beer + Wine + Spirits_Liqueurs + Cider + Cocktails, data = data, family = binomial)
+```
+
+We used multivariable logistic regression to examine the association between alcohol consumption and CKD. CKD was the binary outcome, alcohol quantity was the primary exposure, and sex was included as a potential effect modifier. The model adjusted for age, alcohol consumption frequency, and types of alcohol consumed (beer, wine, spirits/liqueurs, cider, and cocktails). An interaction term between alcohol quantity and sex was included to assess whether the association differed by sex.
 
 ## Assumptions
+### Binary Outcome
+The outcome variable CKD is binary, coded as 0 for absence of CKD and 1 for presence of CKD. Therefore, binary logistic regression is appropriate for this analysis.
+
+### Independence of observations
+Each participant contributes one observation, and the data come from different individuals. Therefore, the observations are considered independent.
+
+### Linearity in the logit
+The linearity in the logit assumption means that continuous predictors have a linear relationship with the log odds of CKD. In this model, alcohol quantity, age, and alcohol frequency are numeric variables. Although age and alcohol frequency are discrete variables, they are treated as continuous predictors when entered into the model as numeric values. Therefore, the linearity in the logit assumption needs to be checked for these variables.
+
+The linearity in the logit assumption was assessed for alcohol quantity, age, and alcohol frequency using scatter plots with LOWESS smooth curves.
+
+
+```{r,echo=FALSE}
+plot(
+  data$Alcohol_quantity,
+  model_int$linear.predictors,
+  xlab = "Alcohol quantity",
+  ylab = "Linear predictor (logit)",
+  pch = 16,
+  cex = 0.5
+)
+
+lines(
+  lowess(
+    data$Alcohol_quantity,
+    model_int$linear.predictors
+  ),
+  col = "blue",
+  lwd = 2
+)
+```
+
+```{r, echo=FALSE}
+plot(
+  data$Age,
+  model_int$linear.predictors,
+  xlab = "Age",
+  ylab = "Linear predictor (logit)",
+  pch = 16,
+  cex = 0.5
+)
+
+lines(
+  lowess(
+    data$Age,
+    model_int$linear.predictors
+  ),
+  col = "blue",
+  lwd = 2
+)
+```
+
+```{r,echo=FALSE}
+plot(
+  data$Alcohol_frequency,
+  model_int$linear.predictors,
+  xlab = "Alcohol frequency",
+  ylab = "Linear predictor (logit)",
+  pch = 16,
+  cex = 0.5
+)
+
+lines(
+  lowess(
+    data$Alcohol_frequency,
+    model_int$linear.predictors
+  ),
+  col = "blue",
+  lwd = 2
+)
+```
+
+For alcohol quantity, the LOWESS curve shows an approximately linear relationship with the model's linear predictor, with small deviations at lower levels. For age, the curve is almost a straight line. For alcohol frequency, the curve is also approximately linear, with a slight upward trend at higher frequencies.
+
+Overall, the plots suggest that the linearity in the logit assumption is reasonably satisfied for all three variables.
+
+### Multicollinearity
+```{r,message=FALSE,warning=FALSE}
+round(vif(model_int), 2)
+```
+
+Multicollinearity was assessed using the VIF. The VIF values ranged from 1.01 to 12.15, with the highest values observed for alcohol quantity (11.00) and the alcohol quantity x sex interaction (12.15). The higher VIF for the interaction term may be related to its inclusion in the model, as interaction terms can increase VIF values.
+
+```{r}
+model_no_int <- glm(CKD ~ Age + Alcohol_quantity + Sex + Alcohol_frequency + Beer + Wine + Spirits_Liqueurs + Cider + Cocktails, data = data, family = binomial)
+round(vif(model_no_int), 2)
+```
+
+For comparison, a model without the interaction term was fitted. The VIF values were lower in this model, particularly for alcohol quantity, suggesting that the interaction term contributed to the higher VIF values in the interaction model. As the interaction term was included to address the research question of whether the association differed by sex, it was retained in the model. 
+
+### Influential Observations
+Influential observations were assessed using Cook's distance.  
+
+```{r}
+cd <- cooks.distance(model_int)
+```
+
+
+```{r,echo=FALSE}
+plot(
+  1:length(cd), cd,
+  type = "h",
+  xlab = "Observation",
+  ylab = "Cook's distance",
+  ylim = c(0, max(cd) * 1.15)
+)
+
+top5 <- order(cd, decreasing = TRUE)[1:5]
+
+text(
+  top5,
+  cd[top5],
+  labels = top5,
+  pos = 3,
+  cex = 0.8
+)
+```
+
+```{r}
+top8_cd <- sort(cd, decreasing = TRUE)[1:8]
+round(top8_cd, 4)
+```
+Influential observations were assessed using Cook's distance. Several observations had relatively higher Cook's distances, the maximum value was 0.103. 
+
+The observations with higher Cook's distances were examined in more detail.
+```{r,echo=FALSE}
+top7 <- order(cd, decreasing = TRUE)[1:7]
+
+data.frame(
+  Observation = top7,
+  Cooks_Distance = round(cd[top7], 4),
+  data[top7, c(
+    "CKD",
+    "Alcohol_quantity",
+    "Sex",
+    "Age",
+    "Alcohol_frequency",
+    "Beer",
+    "Wine",
+    "Spirits_Liqueurs",
+    "Cider",
+    "Cocktails"
+  )]
+)
+```
+
+After reviewing these observations individually, no data errors were identified, and all observations were retained in the analysis.
 
 ## Results
+```{r}
+summary(model_int)
+```
+
 summary output? OR, CI, pvalue  
 
 ## Visualisation?
-haven't decided...
 readable, captions...
 
 ## Interpretation
 
 
 # Conclusion
-interaction, and quantity?
+interaction, and quantity?  
 ## Limitations
 ## Future Research?
 
 # References
-https://www.datanovia.com/learn/biostatistics/regression/logistic-regression-assumptions-and-diagnostics-in-r#google_vignette
+https://www.datanovia.com/learn/biostatistics/regression/logistic-regression-assumptions-and-diagnostics-in-r#google_vignette  
+https://www.researchgate.net/post/Centering_Continuous_Predictors_in_Logistic_Regression  
+https://stackoverflow.com/questions/36543315/cooks-distance-plot-from-vector-in-r
 format!

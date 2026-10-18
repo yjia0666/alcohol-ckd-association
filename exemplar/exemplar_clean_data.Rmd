@@ -314,8 +314,6 @@ df_filter <- df_final %>%
     Alcohol_frequency,
     Alcohol_risk,
     Age,
-    smoker_status,
-    daily_smoke,
     
   ) %>%
   filter(
@@ -326,8 +324,6 @@ df_filter <- df_final %>%
     !is.na(Alcohol_frequency),
     !is.na(Alcohol_risk),
     !is.na(Age),
-    !is.na(smoker_status),
-    !is.na(daily_smoke),
     Age >= 35
   )
 ```
@@ -354,29 +350,6 @@ df_filter <- df_filter %>%
         "Risky",
         "High risk"
       )
-    ),
-    smoker_status = factor(
-      smoker_status,
-      levels = c(
-        "Current smoker",
-        "Ex-smoker",
-        "Never smoked"
-      )
-    ),
-    daily_smoke = factor(
-      daily_smoke,
-      levels = c(
-      "Never smoked daily",
-      "Smoked daily for less than 10 years",
-      "Smoked daily for 10 - 29 years",
-      "Smoked daily for 30 years and over"
-    ),
-    labels = c(
-      "Never",
-      "<10 years",
-      "10-29 years",
-      "30+ years"
-    )
     ),
     
     across(
@@ -434,6 +407,12 @@ df_filter$Spirits_Liqueurs <- factor(
   labels = c("0", "1")
 )
 ```
+
+```{r}
+df_filter <- df_filter %>%
+  select(-Low_alcohol_beer, -Mid_strength_beer, -Full_strength_beer, -White_wine, -Red_wine,-Low_alcohol_wine, -Champagne_sparkling_wine, -Fortified_wine, -Spirits_RTD, -Liqueurs, -Spirits, -SEX)
+```
+
 
 ```{r}
 saveRDS(df_filter, "shared_df_filter.rds")
