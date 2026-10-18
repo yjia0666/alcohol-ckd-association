@@ -4,7 +4,9 @@ author: "yjia0666"
 output: 
   html_document:
     number_sections: true
+bibliography: references.bib
 date: "2026-10-18"
+nocite: '@*'
 ---
 ```{r,message=FALSE, warning=FALSE}
 library(dplyr)
@@ -153,7 +155,7 @@ lines(
     data$Alcohol_quantity,
     model_int$linear.predictors
   ),
-  col = "blue",
+  col = "steelblue",
   lwd = 2
 )
 ```
@@ -173,7 +175,7 @@ lines(
     data$Age,
     model_int$linear.predictors
   ),
-  col = "blue",
+  col = "steelblue",
   lwd = 2
 )
 ```
@@ -193,7 +195,7 @@ lines(
     data$Alcohol_frequency,
     model_int$linear.predictors
   ),
-  col = "blue",
+  col = "steelblue",
   lwd = 2
 )
 ```
@@ -207,7 +209,7 @@ Overall, the plots suggest that the linearity in the logit assumption is reasona
 round(vif(model_int), 2)
 ```
 
-Multicollinearity was assessed using the VIF. The VIF values ranged from 1.01 to 12.15, with the highest values observed for alcohol quantity (11.00) and the alcohol quantity x sex interaction (12.15). The higher VIF for the interaction term may be related to its inclusion in the model, as interaction terms can increase VIF values.
+Multicollinearity was assessed using the VIF. The VIF values ranged from 1.01 to 12.15, with the highest values observed for alcohol quantity (11.00) and the alcohol quantity * sex interaction (12.15). The higher VIF for the interaction term may be related to its inclusion in the model, as interaction terms can increase VIF values.
 
 ```{r}
 model_no_int <- glm(CKD ~ Age + Alcohol_quantity + Sex + Alcohol_frequency + Beer + Wine + Spirits_Liqueurs + Cider + Cocktails, data = data, family = binomial)
@@ -274,26 +276,169 @@ data.frame(
 
 After reviewing these observations individually, no data errors were identified, and all observations were retained in the analysis.
 
-## Results
-```{r}
-summary(model_int)
+## Results and Interpretation
+```{r, echo=FALSE}
+model_summary <- summary(model_int)$coefficients
+
+results_pretty <- data.frame(
+  Variable = rownames(model_summary),
+
+  OR = exp(model_summary[, "Estimate"]),
+
+  `95% CI` = paste0(
+    sprintf("%.2f", exp(model_summary[, "Estimate"] -
+                         1.96 * model_summary[, "Std. Error"])),
+    "–",
+    sprintf("%.2f", exp(model_summary[, "Estimate"] +
+                         1.96 * model_summary[, "Std. Error"]))
+  ),
+
+  SE = sprintf("%.3f", model_summary[, "Std. Error"]),
+
+  `P-value` = ifelse(
+    model_summary[, "Pr(>|z|)"] < 0.001,
+    "<0.001",
+    sprintf("%.3f", model_summary[, "Pr(>|z|)"])
+  ),
+
+  check.names = FALSE
+)
+
+results_pretty$OR <- sprintf("%.2f", results_pretty$OR)
+
+print(results_pretty, row.names = FALSE)
 ```
 
-summary output? OR, CI, pvalue  
+Age was positively associated with CKD, with the odds of CKD increasing by 8% for each one-year increase in age (OR = 1.08, p < 0.001). This finding is consistent with the expected relationship between age and CKD, as older age is an important risk factor for CKD.
 
-## Visualisation?
-readable, captions...
+Alcohol quantity showed a negative association with CKD among females (OR = 0.83, p = 0.053). Although the p-value was close to 0.05, the association was not statistically significant.This result suggests lower CKD odds with higher alcohol consumption, which may differ from the expectation, but the evidence is not strong enough to confirm this association.
 
-## Interpretation
+Other alcohol-related variables, including alcohol frequency and different types of alcohol, were not significantly associated with CKD in the adjusted model.
 
+Importantly, the interaction between alcohol quantity and sex was statistically significant (OR = 1.23, p = 0.036), suggesting that the association between alcohol quantity and CKD differed between males and females.
+
+To further illustrate the regression results, a forest plot was used to visualise the odds ratios and their 95% confidence intervals:
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+plot_data <- data.frame(
+  Variable = rownames(model_summary),
+  OR = exp(model_summary[, "Estimate"]),
+  Lower = exp(model_summary[, "Estimate"] -
+                1.96 * model_summary[, "Std. Error"]),
+  Upper = exp(model_summary[, "Estimate"] +
+                1.96 * model_summary[, "Std. Error"]),
+  p_value = model_summary[, "Pr(>|z|)"]
+)
+
+plot_data <- subset(plot_data, Variable != "(Intercept)")
+
+ggplot(plot_data,
+       aes(x = OR, y = reorder(Variable, OR))) +
+  geom_vline(xintercept = 1, linetype = "dashed",
+             color = "grey50") +
+  geom_errorbarh(aes(xmin = Lower, xmax = Upper),
+                 height = 0.2, color = "steelblue") +
+  geom_point(size = 3, color = "steelblue") +
+  scale_x_log10() +
+  labs(
+    title = "Association between Covariates and CKD",
+    x = "Odds Ratio (95% CI, log scale)",
+    y = NULL
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+Age showed a clear positive association with CKD, and its narrow confidence interval suggested that the estimate was precise. Alcohol frequency also had a relatively narrow confidence interval, although the association was not statistically significant.
+
+In contrast, Cider and Cocktails had wide confidence intervals, suggesting that their estimates were less precise and more uncertain.
+
+The confidence interval for the interaction between alcohol quantity and sex did not include 1, suggesting that the association between alcohol quantity and CKD differed between males and females.
+
+The forest plot below compares the ORs and 95% CIs for the association between alcohol quantity and CKD in males and females:
+
+```{r, echo=FALSE}
+# Extract coefficients and covariance matrix
+b <- coef(model_int)
+V <- vcov(model_int)
+
+# Female: reference group
+beta_female <- b["Alcohol_quantity"]
+se_female <- sqrt(V["Alcohol_quantity",
+                    "Alcohol_quantity"])
+
+# Male: main effect + interaction effect
+beta_male <- b["Alcohol_quantity"] +
+  b["Alcohol_quantity:SexMale"]
+
+se_male <- sqrt(
+  V["Alcohol_quantity", "Alcohol_quantity"] +
+  V["Alcohol_quantity:SexMale",
+    "Alcohol_quantity:SexMale"] +
+  2 * V["Alcohol_quantity",
+        "Alcohol_quantity:SexMale"]
+)
+
+# Create plotting data
+plot_interaction <- data.frame(
+  Sex = c("Female", "Male"),
+  OR = exp(c(beta_female, beta_male)),
+  Lower = exp(c(
+    beta_female - 1.96 * se_female,
+    beta_male - 1.96 * se_male
+  )),
+  Upper = exp(c(
+    beta_female + 1.96 * se_female,
+    beta_male + 1.96 * se_male
+  ))
+)
+
+# Plot
+ggplot(plot_interaction,
+       aes(x = OR, y = Sex)) +
+  geom_vline(
+    xintercept = 1,
+    linetype = "dashed",
+    color = "grey50"
+  ) +
+  geom_errorbar(
+    aes(xmin = Lower, xmax = Upper),
+    orientation = "y",
+    width = 0.2,
+    color = "steelblue",
+    linewidth = 0.8
+  ) +
+  geom_point(
+    color = "steelblue",
+    size = 3
+  ) +
+  scale_x_log10() +
+  labs(
+    title = "Association between Alcohol Quantity and CKD by Sex",
+    x = "Odds Ratio (95% CI)",
+    y = "Sex"
+  ) +
+  theme_classic(base_size = 12)
+
+```
+
+The OR was 0.83 for females, suggesting lower odds of CKD with higher alcohol consumption, while the OR for males was slightly above 1. The confidence interval was wider for females, indicating a less precise estimate. The plot visually illustrates the difference in the association between males and females, supporting the significant interaction observed in the regression model (p = 0.036).
 
 # Conclusion
-interaction, and quantity?  
+In conclusion, alcohol quantity, drinking frequency, and different types of alcohol were not significantly associated with CKD in the adjusted analyses, although the association between alcohol quantity and CKD appeared to differ by sex. The significant interaction suggests that sex may modify the association between alcohol quantity and CKD. However, the results should be interpreted with caution due to the limitations of the data and the wide confidence intervals for some estimates.  
+
 ## Limitations
-## Future Research?
+This study had several limitations. First, alcohol consumption was self-reported, so participants may not have recalled their drinking accurately.
+
+Second, alcohol quantity and types were measured over the previous week, while drinking frequency was measured over the previous year. These different time frames may not reflect the same drinking patterns or fully capture long-term alcohol consumption, which may be more relevant to CKD.
+
+In addition, some important confounding factors were not included in the model, which may have affected the results.
+
+Also, some categories within variables were combined, such as alcohol type and drinking frequency, so some differences may have been missed.
+
+Finally, age was originally recorded in ranges and converted into numerical values using the median of each range. This may have reduced the accuracy of age measurement.
+
+## Future Research
+Future research could use more detailed and reliable data on alcohol consumption to better reflect long-term drinking habits. More potential confounding factors could also be included in the model to improve the analysis. Finally, future studies with larger sample sizes could provide more precise estimates and help confirm whether sex modifies the association between alcohol consumption and CKD.
 
 # References
-https://www.datanovia.com/learn/biostatistics/regression/logistic-regression-assumptions-and-diagnostics-in-r#google_vignette  
-https://www.researchgate.net/post/Centering_Continuous_Predictors_in_Logistic_Regression  
-https://stackoverflow.com/questions/36543315/cooks-distance-plot-from-vector-in-r
-format!
+
