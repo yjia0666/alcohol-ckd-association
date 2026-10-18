@@ -1,0 +1,91 @@
+---
+title: "FindVariables"
+output: html_document
+date: "2026-09-03"
+---
+
+```{r}
+library(readr)
+library(dplyr)
+library(here)
+
+```
+
+```{r}
+# 1. Get the safe path to the folder
+data <- here("data")
+
+# 2. List all files inside that folder
+file_list <- list.files(path = data, pattern = "^AHS.*\\.csv$", full.names = TRUE)
+inp_file_list <- list.files(path = data, pattern = "^inp.*\\.csv$", full.names = TRUE)
+
+print(inp_file_list)
+
+```
+
+```{r}
+# NHS survey
+variable_catalogue <- data.frame()
+
+for (file in unique(file_list)) {
+  
+  vars <- names(
+    read_csv(
+      file,
+      n_max = 0, # Read column names
+      show_col_types = FALSE
+    )
+  )
+  
+  temp <- data.frame( # temporary data frame for one file
+    File = basename(file),
+    Variable = vars
+  )
+  
+  variable_catalogue <- bind_rows(
+    variable_catalogue,
+    temp
+  )
+}
+```
+
+```{r}
+# inp survey
+inp_variable_catalogue <- data.frame()
+
+for (file in unique(inp_file_list)) {
+  
+  vars <- names(
+    read_csv(
+      file,
+      n_max = 0, # Read column names
+      show_col_types = FALSE
+    )
+  )
+  
+  temp <- data.frame( # temporary data frame for one file
+    File = basename(file),
+    Variable = vars
+  )
+  
+  inp_variable_catalogue <- bind_rows(
+    inp_variable_catalogue,
+    temp
+  )
+}
+```
+
+
+
+```{r}
+# Find the location of the variable
+variable_catalogue %>%
+  filter(Variable == "AGEB") # Or use regex: grepl("EXREG", Variable)
+```
+
+```{r}
+inp_variable_catalogue %>%
+  filter(Variable == "ALCTYPT") # Or use regex: grepl("EXREG", Variable)
+```
+
+
