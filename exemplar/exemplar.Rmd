@@ -22,10 +22,9 @@ library(ggplot2)
 data <- readRDS("shared_df_filter.rds")
 ```
 # Research Question
-Our research question is: What is the association of alcohol consumption and CKD, and does sex modify this association among people (++++)  
+Our research question is: What is the association of alcohol consumption and CKD, and does sex modify this association?  
 
-
-The objective of this study is to investigate the association between alcohol and CKD and to examine whether this association differs by sex. The findings aim to contribute to public health education by improving understanding of the potential relationship between alcohol consumption and CKD.
+The objective of this study is to investigate the association between alcohol consumption and CKD and to examine whether this association differs by sex. The findings aim to contribute to public health education by improving understanding of the potential relationship between alcohol consumption and CKD.
 
 # Data Preparation
 ## Overview
@@ -98,10 +97,10 @@ variable_overview |>
   )
 ```
 
-The following sections describe the data cleaning and preprocessing procedures undertaken to prepare the dataset for analysis
+The following sections describe the data cleaning and preprocessing procedures used to prepare the dataset for analysis.
 
 ## Data Cleaning and Removal
-The original dataset contained two records with the same household identifier (ABSLID = "NHS11B0009794") and person identifier (ABSPID = 6). Since ABSLID identifies the household and ABSPID identifies an individual within that household, each ABSLID–ABSPID combination was expected to be unique. However, further examination revealed differences in other variables between the two records, indicating that they were not exact duplicates. Both records were removed. 
+The original dataset contained two records with the same household identifier (ABSLID = "NHS11B0009794") and person identifier (ABSPID = 6). Since ABSLID identifies a household and ABSPID identifies an individual within that household, each ABSLID–ABSPID combination was expected to be unique. However, further examination revealed differences in other variables between the two records, indicating that they were not exact duplicates. Both records were removed. 
 
 The alcohol type category "Other" was excluded because all observations in this category had a value of zero after data filtering. 
 
@@ -118,32 +117,48 @@ The original dataset contained multiple alcohol types. To simplify the analysis 
 
 # Logistic Regression
 ## Method Selection
-Logistic regression was selected because the outcome variable CKD is binary. This method estimates the association between alcohol consumption and the odds of CKD while accounting for other variables included in the model.
+Logistic regression was selected because the outcome variable CKD is binary. This method estimates the association between alcohol consumption and the odds of CKD while adjusting for other variables included in the model.
 
 ## Model Specification
 ```{r}
 model_int <- glm(CKD ~ Age + Alcohol_quantity * Sex + Alcohol_frequency + Beer + Wine + Spirits_Liqueurs + Cider + Cocktails, data = data, family = binomial)
 ```
 
-We used multivariable logistic regression to examine the association between alcohol consumption and CKD. CKD was the binary outcome, alcohol quantity was the primary exposure, and sex was included as a potential effect modifier. The model adjusted for age, alcohol consumption frequency, and types of alcohol consumed (beer, wine, spirits/liqueurs, cider, and cocktails). An interaction term between alcohol quantity and sex was included to assess whether the association differed by sex.
+$$
+\begin{aligned}
+\log\left(\frac{P(CKD_i=1)}{1-(P(CKD_i=1))}\right)
+={}& \beta_0 + \beta_1 \mathrm{Age}_i \\
+&+ \beta_2 \mathrm{AlcoholQuantity}_i \\
+&+ \beta_3 \mathrm{Sex}_i \\
+&+ \beta_4 (\mathrm{AlcoholQuantity}_i \times \mathrm{Sex}_i) \\
+&+ \beta_5 \mathrm{AlcoholFrequency}_i \\
+&+ \beta_6 \mathrm{Beer}_i \\
+&+ \beta_7 \mathrm{Wine}_i \\
+&+ \beta_8 \mathrm{SpiritsLiqueurs}_i \\
+&+ \beta_9 \mathrm{Cider}_i \\
+&+ \beta_{10} \mathrm{Cocktails}_i
+\end{aligned}
+$$
 
-## Assumptions
+We used multivariable logistic regression to examine the association between alcohol consumption and CKD. CKD was the binary outcome, alcohol quantity was the primary exposure, and sex was included as a potential effect modifier. The model adjusted for age, alcohol consumption frequency, and types of alcohol consumed (beer, wine, spirits/liqueurs, cider, and cocktails). An interaction term between alcohol quantity and sex was included to assess whether the association differed by sex. The model is presented above in R code and mathematical form.
+
+## Assumptions and Diagnostics
 ### Binary Outcome
 The outcome variable CKD is binary, coded as 0 for absence of CKD and 1 for presence of CKD. Therefore, binary logistic regression is appropriate for this analysis.
 
 ### Independence of observations
-Each participant contributes one observation, and the data come from different individuals. Therefore, the observations are considered independent.
+Each participant contributes one observation, and the data come from different individuals. Therefore, the observations are assumed to be independent.
 
 ### Linearity in the logit
-The linearity in the logit assumption means that continuous predictors have a linear relationship with the log odds of CKD. In this model, alcohol quantity, age, and alcohol frequency are numeric variables. Although age and alcohol frequency are discrete variables, they are treated as continuous predictors when entered into the model as numeric values. Therefore, the linearity in the logit assumption needs to be checked for these variables.
+The linearity in the logit assumption means that continuous predictors have a linear relationship with the log odds of CKD. In this model, alcohol quantity, age, and alcohol frequency are numeric variables. Although age and alcohol frequency are discrete variables, they are treated as continuous predictors when entered into the model as numeric values. Therefore, the linearity in the logit assumption needs to be checked for these variables. 
 
 The linearity in the logit assumption was assessed for alcohol quantity, age, and alcohol frequency using scatter plots with LOWESS smooth curves.
-
 
 ```{r,echo=FALSE}
 plot(
   data$Alcohol_quantity,
   model_int$linear.predictors,
+  main = "Alcohol Quantity and the Linear Predictor of CKD",
   xlab = "Alcohol quantity",
   ylab = "Linear predictor (logit)",
   pch = 16,
@@ -164,6 +179,7 @@ lines(
 plot(
   data$Age,
   model_int$linear.predictors,
+  main = "Age and the Linear Predictor of CKD",
   xlab = "Age",
   ylab = "Linear predictor (logit)",
   pch = 16,
@@ -184,6 +200,7 @@ lines(
 plot(
   data$Alcohol_frequency,
   model_int$linear.predictors,
+  main = "Alcohol Frequency and the Linear Predictor of CKD",
   xlab = "Alcohol frequency",
   ylab = "Linear predictor (logit)",
   pch = 16,
@@ -209,14 +226,14 @@ Overall, the plots suggest that the linearity in the logit assumption is reasona
 round(vif(model_int), 2)
 ```
 
-Multicollinearity was assessed using the VIF. The VIF values ranged from 1.01 to 12.15, with the highest values observed for alcohol quantity (11.00) and the alcohol quantity * sex interaction (12.15). The higher VIF for the interaction term may be related to its inclusion in the model, as interaction terms can increase VIF values.
+Multicollinearity was assessed using the variance inflation factor (VIF). The VIF values ranged from 1.01 to 12.15, with the highest values observed for alcohol quantity (11.00) and the alcohol quantity × sex interaction term (12.15). The higher VIF for the interaction term may be related to its inclusion in the model, as interaction terms can increase VIF values.
 
 ```{r}
 model_no_int <- glm(CKD ~ Age + Alcohol_quantity + Sex + Alcohol_frequency + Beer + Wine + Spirits_Liqueurs + Cider + Cocktails, data = data, family = binomial)
 round(vif(model_no_int), 2)
 ```
 
-For comparison, a model without the interaction term was fitted. The VIF values were lower in this model, particularly for alcohol quantity, suggesting that the interaction term contributed to the higher VIF values in the interaction model. As the interaction term was included to address the research question of whether the association differed by sex, it was retained in the model. 
+For comparison, a model without the interaction term was fitted. The VIF values were lower in this model, particularly for alcohol quantity, suggesting that the interaction term may have contributed to the higher VIF values in the interaction model. As the interaction term was included to address the research question of whether the association differed by sex, it was retained in the model. 
 
 ### Influential Observations
 Influential observations were assessed using Cook's distance.  
@@ -224,7 +241,6 @@ Influential observations were assessed using Cook's distance.
 ```{r}
 cd <- cooks.distance(model_int)
 ```
-
 
 ```{r,echo=FALSE}
 plot(
@@ -317,7 +333,7 @@ Other alcohol-related variables, including alcohol frequency and different types
 
 Importantly, the interaction between alcohol quantity and sex was statistically significant (OR = 1.23, p = 0.036), suggesting that the association between alcohol quantity and CKD differed between males and females.
 
-To further illustrate the regression results, a forest plot was used to visualise the odds ratios and their 95% confidence intervals:
+To further illustrate the regression results, the forest plot below shows the odds ratios and their 95% confidence intervals for the variables included in the model.
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE}
 plot_data <- data.frame(
@@ -348,13 +364,13 @@ ggplot(plot_data,
   theme_minimal(base_size = 12)
 ```
 
-Age showed a clear positive association with CKD, and its narrow confidence interval suggested that the estimate was precise. Alcohol frequency also had a relatively narrow confidence interval, although the association was not statistically significant.
+Age showed a clear positive association with CKD, and its narrow confidence interval suggested that the estimate was precise. Alcohol frequency also had a relatively narrow confidence interval, although its association with CKD was not statistically significant.
 
 In contrast, Cider and Cocktails had wide confidence intervals, suggesting that their estimates were less precise and more uncertain.
 
-The confidence interval for the interaction between alcohol quantity and sex did not include 1, suggesting that the association between alcohol quantity and CKD differed between males and females.
+The confidence interval for the interaction between alcohol quantity and sex did not include 1, providing further evidence that the association between alcohol quantity and CKD differed by sex.
 
-The forest plot below compares the ORs and 95% CIs for the association between alcohol quantity and CKD in males and females:
+The forest plot below compares the ORs and 95% CIs for the association between alcohol quantity and CKD in males and females.
 
 ```{r, echo=FALSE}
 # Extract coefficients and covariance matrix
@@ -421,10 +437,10 @@ ggplot(plot_interaction,
 
 ```
 
-The OR was 0.83 for females, suggesting lower odds of CKD with higher alcohol consumption, while the OR for males was slightly above 1. The confidence interval was wider for females, indicating a less precise estimate. The plot visually illustrates the difference in the association between males and females, supporting the significant interaction observed in the regression model (p = 0.036).
+Among females, the OR was 0.83, suggesting lower odds of CKD with higher alcohol consumption, although this association was not statistically significant. In comparison, the OR for males was slightly above 1. The confidence interval was wider for females, indicating a less precise estimate. Overall, the plot illustrates the difference in the estimated associations between males and females, consistent with the statistically significant interaction (p = 0.036).
 
 # Conclusion
-In conclusion, alcohol quantity, drinking frequency, and different types of alcohol were not significantly associated with CKD in the adjusted analyses, although the association between alcohol quantity and CKD appeared to differ by sex. The significant interaction suggests that sex may modify the association between alcohol quantity and CKD. However, the results should be interpreted with caution due to the limitations of the data and the wide confidence intervals for some estimates.  
+In conclusion, alcohol quantity, drinking frequency, and different types of alcohol were not significantly associated with CKD in the adjusted analyses. However, the association between alcohol quantity and CKD appeared to differ by sex. The significant interaction suggests that sex may modify the association between alcohol quantity and CKD. However, the results should be interpreted with caution due to the limitations of the data and the wide confidence intervals for some estimates.  
 
 ## Limitations
 This study had several limitations. First, alcohol consumption was self-reported, so participants may not have recalled their drinking accurately.
@@ -433,12 +449,12 @@ Second, alcohol quantity and types were measured over the previous week, while d
 
 In addition, some important confounding factors were not included in the model, which may have affected the results.
 
-Also, some categories within variables were combined, such as alcohol type and drinking frequency, so some differences may have been missed.
+Furthermore, some categories within variables were combined, such as alcohol type and drinking frequency, so some differences may have been missed.
 
 Finally, age was originally recorded in ranges and converted into numerical values using the median of each range. This may have reduced the accuracy of age measurement.
 
 ## Future Research
-Future research could use more detailed and reliable data on alcohol consumption to better reflect long-term drinking habits. More potential confounding factors could also be included in the model to improve the analysis. Finally, future studies with larger sample sizes could provide more precise estimates and help confirm whether sex modifies the association between alcohol consumption and CKD.
+Future research could use more detailed and reliable data on alcohol consumption to better reflect long-term drinking habits. More potential confounding factors could also be included in the model to improve the analysis. Finally, future studies with larger sample sizes could provide more precise estimates and help clarify whether sex modifies the association between alcohol consumption and CKD.
 
 # References
 
