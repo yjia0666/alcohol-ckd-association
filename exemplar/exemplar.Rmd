@@ -107,7 +107,7 @@ The alcohol type category "Other" was excluded because all observations in this 
 Similarly, the alcohol frequency categories "No alcohol (past year)" and "Never alcohol" were excluded because they contained no participants (n = 0) in the filtered dataset. 
 
 ## Variable Transformation
-Age was originally recorded as a categorical variable, with each category representing an age range. It was converted into a numeric variable by assigning the median age of each range to the corresponding observations. The dataset was also restricted to participants aged over 35 years to align with the study's target population and reduce class imbalance.  
+Age was originally recorded as a categorical variable, with each category representing an age range. It was converted into a numeric variable by assigning the median age of each range to the corresponding observations. The dataset was additionally restricted to participants aged over 35 years, given that CKD is generally more prevalent in older populations and may develop progressively over time. This restriction was also explored as a potential way to improve class balance, however, the proportion of participants with CKD increased only slightly, from 10% to 11%.
 
 Alcohol frequency was originally recorded as a categorical variable and was recoded into a numeric variable representing the number of days per week. Responses indicating a frequency of one day per week or more were retained at their original values, while less frequent responses were coded as zero. Unknown responses were retained as missing values (NA).
 
