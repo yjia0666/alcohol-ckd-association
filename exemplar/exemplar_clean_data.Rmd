@@ -72,7 +72,7 @@ ckd_data <- df %>%
       EGFRIMP %in% c(0, 8) ~ NA_character_
     ),
     
-    smoker_status = case_when(
+    Smoker_status = case_when(
       SMKSTAT == 5 ~ "Never smoked",
       SMKSTAT == 4 ~ "Ex-smoker",
       SMKSTAT %in% c(1, 2, 3) ~ "Current smoker",
@@ -314,6 +314,7 @@ df_filter <- df_final %>%
     Alcohol_frequency,
     Alcohol_risk,
     Age,
+    Smoker_status
     
   ) %>%
   filter(
@@ -324,6 +325,7 @@ df_filter <- df_final %>%
     !is.na(Alcohol_frequency),
     !is.na(Alcohol_risk),
     !is.na(Age),
+    !is.na(Smoker_status)
     Age >= 35
   )
 ```
@@ -349,6 +351,14 @@ df_filter <- df_filter %>%
         "Low risk",
         "Risky",
         "High risk"
+      )
+    ),
+    Smoker_status = factor(
+      smoker_status,
+      levels = c(
+        "Current smoker",
+        "Ex-smoker",
+        "Never smoked"
       )
     ),
     

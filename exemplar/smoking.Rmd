@@ -1,0 +1,64 @@
+---
+title: "exemplar"
+author: "yjia0666"
+output: 
+  html_document:
+    number_sections: true
+date: "2026-10-18"
+nocite: '@*'
+---
+```{r,message=FALSE, warning=FALSE}
+library(dplyr)
+library(emmeans)
+library(car)
+library(dagitty)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+```
+
+```{r}
+data <- readRDS("shared_df_filter.rds")
+```
+
+```{r}
+model_smoking_int <- glm(
+  CKD ~ Smoker_status * Sex + Age,
+  data = data,
+  family = binomial
+)
+```
+
+```{r}
+smoking_model_summary <- summary(model_smoking_int)$coefficients
+
+results_pretty <- data.frame(
+  Variable = rownames(smoking_model_summary),
+
+  OR = exp(smoking_model_summary[, "Estimate"]),
+
+  `95% CI` = paste0(
+    sprintf("%.2f", exp(smoking_model_summary[, "Estimate"] -
+                         1.96 * smoking_model_summary[, "Std. Error"])),
+    "-",
+    sprintf("%.2f", exp(smoking_model_summary[, "Estimate"] +
+                         1.96 * smoking_model_summary[, "Std. Error"]))
+  ),
+
+  SE = sprintf("%.3f", smoking_model_summary[, "Std. Error"]),
+
+  `P-value` = ifelse(
+    smoking_model_summary[, "Pr(>|z|)"] < 0.001,
+    "<0.001",
+    sprintf("%.3f", smoking_model_summary[, "Pr(>|z|)"])
+  ),
+
+  check.names = FALSE
+)
+
+results_pretty$OR <- sprintf("%.2f", results_pretty$OR)
+
+print(results_pretty, row.names = FALSE)
+```
+
+The results showed no statistically significant association between smoking status and CKD. There was also no significant evidence that sex modified this association, as the interaction terms were not statistically significant.

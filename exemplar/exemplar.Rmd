@@ -362,6 +362,7 @@ ggplot(plot_data,
     y = NULL
   ) +
   theme_minimal(base_size = 12)
+ggsave("forest_all.png")
 ```
 
 Age showed a clear positive association with CKD, and its narrow confidence interval suggested that the estimate was precise. Alcohol frequency also had a relatively narrow confidence interval, although its association with CKD was not statistically significant.
@@ -434,7 +435,7 @@ ggplot(plot_interaction,
     y = "Sex"
   ) +
   theme_classic(base_size = 12)
-
+ggsave("forest_sex.png")
 ```
 
 Among females, the OR was 0.83, suggesting lower odds of CKD with higher alcohol consumption, although this association was not statistically significant. In comparison, the OR for males was slightly above 1. The confidence interval was wider for females, indicating a less precise estimate. Overall, the plot illustrates the difference in the estimated associations between males and females, consistent with the statistically significant interaction (p = 0.036).
